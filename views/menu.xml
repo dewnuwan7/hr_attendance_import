@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Add "Import Attendance Logs" under Attendances root menu,
+        alongside the existing Management item.
+        Correct root menu ID: hr_attendance.menu_hr_attendance_root
+    -->
+    <menuitem
+        id="menu_attendance_import_logs"
+        name="Import Attendance Logs"
+        parent="hr_attendance.menu_hr_attendance_root"
+        action="action_attendance_import_wizard"
+        sequence="7"
+        groups="hr_attendance.group_hr_attendance_manager"/>
+
+</odoo>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Inject the "Scan ID" field into the employee Settings tab.
+        Page name is "hr_settings", group name is "identification_group".
+        We insert our field after the existing "pin" field in that group.
+    -->
+    <record id="view_employee_form_attendance_scan_id" model="ir.ui.view">
+        <field name="name">hr.employee.form.attendance.scan.id</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <field name="pin" position="after">
+                <field name="attendance_scan_id"
+                       string="Scan ID"
+                       placeholder="e.g. 112"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>

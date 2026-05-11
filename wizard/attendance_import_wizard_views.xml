@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================ -->
+    <!--  Wizard form                                                     -->
+    <!-- ================================================================ -->
+    <record id="view_attendance_import_wizard_form" model="ir.ui.view">
+        <field name="name">attendance.import.wizard.form</field>
+        <field name="model">attendance.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import Attendance Logs">
+
+                <field name="state" invisible="1"/>
+
+                <!-- ── DRAFT: upload panel ──────────────────────────── -->
+                <group invisible="state == 'done'">
+                    <group string="Upload Machine Excel File">
+                        <field name="excel_file"
+                               widget="binary"
+                               filename="file_name"
+                               required="1"/>
+                        <field name="file_name" invisible="1"/>
+                    </group>
+                    <group string="Instructions">
+                        <div class="alert alert-info" role="alert">
+                            <p><strong>How to use:</strong></p>
+                            <ol>
+                                <li>Export the <em>Total Time Card</em> Excel file from the
+                                    attendance machine software.</li>
+                                <li>Make sure each employee has their
+                                    <strong>Scan ID</strong> configured on their
+                                    employee record (Settings tab →
+                                    Attendance/Point of Sale section).</li>
+                                <li>Upload the file and click <strong>Import</strong>.</li>
+                            </ol>
+                            <p class="mb-0">
+                                <strong>Note:</strong> Rows with no clock-in and no
+                                clock-out are silently skipped. Duplicate records
+                                (same employee + same check-in time) are also skipped.
+                            </p>
+                        </div>
+                    </group>
+                </group>
+
+                <!-- ── DONE: results panel ──────────────────────────── -->
+                <group string="Import Results" invisible="state == 'draft'">
+                    <group>
+                        <field name="result_created" string="✔ Records Created"/>
+                        <field name="result_skipped" string="⏭ Rows Skipped"/>
+                        <field name="result_errors"  string="✘ Errors"/>
+                    </group>
+                </group>
+                <group string="Details" invisible="state == 'draft'">
+                    <field name="result_details"
+                           nolabel="1"
+                           widget="text"
+                           readonly="1"
+                           style="font-family: monospace; white-space: pre-wrap;"/>
+                </group>
+
+                <footer>
+                    <button string="Import"
+                            name="action_import"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state == 'done'"/>
+                    <button string="Cancel"
+                            class="btn-secondary"
+                            special="cancel"
+                            invisible="state == 'done'"/>
+                    <button string="Close"
+                            name="action_close"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state == 'draft'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ================================================================ -->
+    <!--  Action to open the wizard                                       -->
+    <!-- ================================================================ -->
+    <record id="action_attendance_import_wizard" model="ir.actions.act_window">
+        <field name="name">Import Attendance Logs</field>
+        <field name="res_model">attendance.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
