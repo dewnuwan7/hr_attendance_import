@@ -22,8 +22,8 @@
                 </group>
 
                 <!-- ── PREVIEW: summary before confirming ────────────── -->
-                <group invisible="state != 'preview'">
-                    <group string="Import Summary">
+                <group string="Import Summary" invisible="state != 'preview'">
+                    <group>
                         <field name="preview_ready"   string="✔ Records to Import"/>
                         <field name="preview_skipped" string="⏭ Rows to Skip"/>
                         <field name="preview_errors"  string="⚠ Warnings / Errors"/>
@@ -34,7 +34,7 @@
                            nolabel="1"
                            widget="text"
                            readonly="1"
-                           style="font-family: monospace; white-space: pre-wrap;"/>
+                           style="font-family: monospace; white-space: pre-wrap; width: 100%; min-width: 500px; word-break: break-word;"/>
                 </group>
 
                 <!-- ── DONE: results ─────────────────────────────────── -->
@@ -50,11 +50,10 @@
                            nolabel="1"
                            widget="text"
                            readonly="1"
-                           style="font-family: monospace; white-space: pre-wrap;"/>
+                           style="font-family: monospace; white-space: pre-wrap; width: 100%; word-break: break-word;"/>
                 </group>
 
                 <footer>
-                    <!-- Draft -->
                     <button string="Preview"
                             name="action_preview"
                             type="object"
@@ -65,7 +64,6 @@
                             special="cancel"
                             invisible="state != 'draft'"/>
 
-                    <!-- Preview -->
                     <button string="Confirm Import"
                             name="action_confirm_import"
                             type="object"
@@ -77,7 +75,6 @@
                             class="btn-secondary"
                             invisible="state != 'preview'"/>
 
-                    <!-- Done -->
                     <button string="Close"
                             name="action_close"
                             type="object"
