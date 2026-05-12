@@ -1,6 +1,6 @@
 {
     'name': 'Import Attendance Report',
-    'version': '19.0.1.0.0',
+    'version': '19.0.2.0.0',
     'category': 'Human Resources/Attendances',
     'summary': 'Import attendance data from time-card machine Excel exports',
     'description': """
