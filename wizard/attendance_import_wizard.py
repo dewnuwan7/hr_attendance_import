@@ -1,7 +1,8 @@
 import base64
 import io
+import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytz
 
@@ -26,6 +27,40 @@ def _parse_datetime(date_str, time_str):
         return local_dt.astimezone(pytz.utc).replace(tzinfo=None)
     except ValueError:
         return None
+
+
+def _float_to_time_str(float_time):
+    """Convert float hours (e.g. 8.5) to 'HH:MM' string."""
+    hours   = int(float_time)
+    minutes = int(round((float_time - hours) * 60))
+    return f'{hours:02d}:{minutes:02d}'
+
+
+def _apply_checkin_override(check_in_utc, override_float, date_str):
+    """
+    If the check-in (converted back to Colombo time) is earlier than
+    override_float (e.g. 8.5 = 08:30), replace the time component with
+    override_float on the same date and return the new UTC datetime.
+    Returns the original check_in_utc unchanged if it is >= override_float.
+    """
+    # Convert UTC → Colombo to compare
+    colombo_dt = check_in_utc.replace(tzinfo=pytz.utc).astimezone(COLOMBO_TZ)
+    colombo_time_as_float = colombo_dt.hour + colombo_dt.minute / 60.0
+
+    if colombo_time_as_float >= override_float:
+        # On time or late — do not touch
+        return check_in_utc
+
+    # Build the override datetime in Colombo time on the same date
+    override_hours   = int(override_float)
+    override_minutes = int(round((override_float - override_hours) * 60))
+    overridden_local = colombo_dt.replace(
+        hour=override_hours,
+        minute=override_minutes,
+        second=0,
+        microsecond=0,
+    )
+    return overridden_local.astimezone(pytz.utc).replace(tzinfo=None)
 
 
 class AttendanceImportWizard(models.TransientModel):
@@ -59,18 +94,19 @@ class AttendanceImportWizard(models.TransientModel):
     pending_json = fields.Char(string='Pending JSON', readonly=True)
 
     def _reopen(self):
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': self._name,
-            'res_id': self.id,
-            'view_mode': 'form',
-            'target': 'new',
+        action = self.env['ir.actions.act_window']._for_xml_id(
+            'hr_attendance_import.action_attendance_import_wizard'
+        )
+        action.update({
+            'res_id':  self.id,
             'context': self.env.context,
-        }
+        })
+        return action
 
     def _parse_file(self):
-        """Parse the Excel file.  Returns (pending, skipped, errors, detail_lines).
-        pending = list of dicts with keys: employee_id, check_in, check_out (UTC naive datetimes)
+        """
+        Parse the Excel file. Returns (pending, skipped, errors, detail_lines).
+        Applies the company-level Check-In Override if enabled.
         """
         try:
             import openpyxl
@@ -116,6 +152,11 @@ class AttendanceImportWizard(models.TransientModel):
         ])
         scan_map = {emp.attendance_scan_id.strip(): emp for emp in employees}
 
+        # ── Check-In Override settings ────────────────────────────────
+        company          = self.env.company
+        override_enabled = company.attendance_override_enabled
+        override_float   = company.attendance_override_time  # e.g. 8.5
+
         pending      = []
         skipped      = 0
         errors       = 0
@@ -146,41 +187,57 @@ class AttendanceImportWizard(models.TransientModel):
 
             if ci_missing and not co_missing:
                 skipped += 1
-                detail_lines.append(f'Row {row_num} ({name_val}): skipped – check-out only, no check-in.')
+                detail_lines.append(
+                    f'Row {row_num} ({name_val}): skipped – check-out only, no check-in.'
+                )
                 continue
 
             employee = scan_map.get(id_val)
             if not employee:
                 errors += 1
-                detail_lines.append(f'Row {row_num} ({name_val}): no employee with Scan ID "{id_val}".')
+                detail_lines.append(
+                    f'Row {row_num} ({name_val}): no employee with Scan ID "{id_val}".'
+                )
                 continue
 
             check_in_utc = _parse_datetime(ci_date, ci_time)
             if check_in_utc is None:
                 errors += 1
-                detail_lines.append(f'Row {row_num} ({name_val}): invalid check-in datetime.')
+                detail_lines.append(
+                    f'Row {row_num} ({name_val}): invalid check-in datetime.'
+                )
                 continue
+
+            # ── Apply Check-In Override if enabled ────────────────────
+            if override_enabled and override_float:
+                check_in_utc = _apply_checkin_override(
+                    check_in_utc, override_float, ci_date
+                )
 
             check_out_utc = None if co_missing else _parse_datetime(co_date, co_time)
 
             if check_out_utc and check_out_utc <= check_in_utc:
                 errors += 1
-                detail_lines.append(f'Row {row_num} ({name_val}): check-out is not after check-in.')
+                detail_lines.append(
+                    f'Row {row_num} ({name_val}): check-out is not after check-in.'
+                )
                 continue
 
             existing = self.env['hr.attendance'].search([
                 ('employee_id', '=', employee.id),
-                ('check_in', '=', check_in_utc),
+                ('check_in',    '=', check_in_utc),
             ], limit=1)
             if existing:
                 skipped += 1
-                detail_lines.append(f'Row {row_num} ({name_val}): duplicate – already exists.')
+                detail_lines.append(
+                    f'Row {row_num} ({name_val}): duplicate – already exists.'
+                )
                 continue
 
             pending.append({
-                'employee_id': employee.id,
+                'employee_id':   employee.id,
                 'employee_name': employee.name,
-                'check_in': check_in_utc.strftime('%Y-%m-%d %H:%M:%S'),
+                'check_in':  check_in_utc.strftime('%Y-%m-%d %H:%M:%S'),
                 'check_out': check_out_utc.strftime('%Y-%m-%d %H:%M:%S') if check_out_utc else '',
             })
 
@@ -192,30 +249,27 @@ class AttendanceImportWizard(models.TransientModel):
         if not self.excel_file:
             raise UserError(_('Please upload a file first.'))
 
-        import json
         pending, skipped, errors, detail_lines = self._parse_file()
-
         detail_text = '\n'.join(detail_lines) if detail_lines else ''
 
         self.write({
-            'state': 'preview',
+            'state':           'preview',
             'preview_ready':   len(pending),
             'preview_skipped': skipped,
             'preview_errors':  errors,
             'preview_details': detail_text,
-            'pending_json':   json.dumps(pending),
+            'pending_json':    json.dumps(pending),
         })
         return self._reopen()
 
     # ── Step 2: Confirm & Import ───────────────────────────────────────
     def action_confirm_import(self):
         self.ensure_one()
-        import json
         pending = json.loads(self.pending_json or '[]')
 
-        created = 0
+        created        = 0
         runtime_errors = 0
-        detail_lines = []
+        detail_lines   = []
 
         for rec in pending:
             try:
@@ -249,7 +303,7 @@ class AttendanceImportWizard(models.TransientModel):
             'result_skipped': total_skipped,
             'result_errors':  total_errors,
             'result_details': summary,
-            'pending_json':  '',
+            'pending_json':   '',
         })
         return self._reopen()
 

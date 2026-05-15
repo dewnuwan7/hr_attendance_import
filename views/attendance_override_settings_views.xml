@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_attendance_override_settings" model="ir.actions.act_window">
+        <field name="name">Check-In Override Settings</field>
+        <field name="res_model">hr.attendance.override.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_attendance_override_settings_form" model="ir.ui.view">
+        <field name="name">hr.attendance.override.wizard.form</field>
+        <field name="model">hr.attendance.override.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Check-In Override Settings">
+                <group>
+                    <group string="Override Settings">
+                        <field name="override_enabled"
+                               string="Enable Check-In Override"
+                               widget="boolean_toggle"/>
+                        <field name="override_time"
+                               string="Override Check-In Time"
+                               widget="float_time"
+                               invisible="not override_enabled"
+                               required="override_enabled"/>
+                    </group>
+
+                </group>
+                <footer>
+                    <button string="Save"
+                            name="action_save"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel"
+                            name="action_close"
+                            type="object"
+                            class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

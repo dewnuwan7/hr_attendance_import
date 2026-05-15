@@ -1,17 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!--
-        Add "Import Attendance Logs" under Attendances root menu,
-        alongside the existing Management item.
-        Correct root menu ID: hr_attendance.menu_hr_attendance_root
-    -->
+    <!-- Parent menu -->
+    <menuitem
+        id="menu_attendance_import_parent"
+        name="Import Attendance"
+        parent="hr_attendance.menu_hr_attendance_root"
+        sequence="7"
+        groups="hr_attendance.group_hr_attendance_manager"/>
+
+    <!-- Child 1: Import Attendance Logs -->
     <menuitem
         id="menu_attendance_import_logs"
         name="Import Attendance Logs"
-        parent="hr_attendance.menu_hr_attendance_root"
+        parent="menu_attendance_import_parent"
         action="action_attendance_import_wizard"
-        sequence="7"
+        sequence="1"
+        groups="hr_attendance.group_hr_attendance_manager"/>
+
+    <!-- Child 2: Override Settings -->
+    <menuitem
+        id="menu_attendance_override_settings"
+        name="Override Settings"
+        parent="menu_attendance_import_parent"
+        action="action_attendance_override_settings"
+        sequence="2"
         groups="hr_attendance.group_hr_attendance_manager"/>
 
 </odoo>
